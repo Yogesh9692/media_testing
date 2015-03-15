@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent" android:layout_height="300dp">
+    <SurfaceView android:id="@+id/surfaceview"
+        android:layout_width="fill_parent" android:layout_height="wrap_content" />
+    <Button android:id="@+id/mBtnmore" android:layout_width="wrap_content"
+        android:layout_height="35dip" android:text="More"
+        android:layout_marginRight="5dip" android:layout_alignParentRight="true"
+        android:layout_marginTop="8dip" />
+    <Button android:id="@+id/mBtnhints" android:layout_width="wrap_content"
+        android:layout_marginBottom="4dip" android:layout_height="35dip"
+        android:text="Hints" android:layout_marginRight="5dip"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentBottom="true" />
+</RelativeLayout>

@@ -1,0 +1,280 @@
+package com.buffer;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.example.videostreaming.R;
+import com.opencsv.CSVWriter;
+
+import android.R.string;
+import android.app.Activity;
+import android.app.ProgressDialog;
+import android.content.Intent;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
+import android.media.MediaPlayer.OnPreparedListener;
+import android.os.Bundle;
+import android.os.Environment;
+import android.os.SystemClock;
+import android.util.Log;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
+import android.widget.ProgressBar;
+import android.widget.Toast;
+import android.widget.VideoView;
+public class VideoStreamMediaPlayer extends Activity implements SurfaceHolder.Callback, OnPreparedListener{
+
+    // Declare variables
+    ProgressDialog pDialog;
+    //VideoView videoview;
+    MediaPlayer xyz = new MediaPlayer();
+    
+    //String VideoURL = "http://www.androidbegin.com/tutorial/AndroidCommercial.3gp";
+    //String VideoURL = "http://twii.edgeboss.net/download/twii/manutd/mufc_trickbox_240215.mp4";
+    //String VideoURL = "http://115.119.242.26:8095/ukd/DemoFiles/Beautiful.mp4";
+    //String VideoURL = "http://115.119.242.26:8095/ukd/videos/Hoopla_480P.mp4";
+    String VideoURL = "http://h.saavncdn.com/540/SONY_886444676540_01_002.mp3";
+    
+    
+    SurfaceView playerSurfaceView;
+    int filesize;
+    SurfaceHolder surfaceHolder;
+    public ProgressBar mProgress;
+    MediaPlayer mediaPlayer;
+    static long tStart=0,tEnd=0,tDelta=0,vPause=0,vResume=0,vDelta=0,vPause_sum=0,vStartTime=0;// st=0;
+    List<Long> vPaused_duration = new ArrayList<Long>();
+    List<Integer> Buff_percent = new ArrayList<Integer>();    
+    List<Long> vPaused_points = new ArrayList<Long>();
+    
+    int i;
+    static double elapsedSeconds=0;
+    boolean start=true,end=true, print = true;
+    int percent_frag = 0, prev_percent = 0;
+    //float vPause_sum=0,vStartTime=0;
+    //CSV writing
+    
+    //st=System.currentTimeMillis();
+    
+    
+    FileWriter writer;
+    //FileWriter writer1;
+    //String root = (Environment.getExternalStorageDirectory()+ "Test_Results");
+    //File gpxfile = (File)(new File(root+ "\\mydata5.csv"));
+    File root = Environment.getExternalStorageDirectory();
+    
+    
+    
+    
+    
+    File gpxfile =new File(root, "mydata9_loop.csv");
+    File gpxfile1=new File(root, "mydata9_loop.csv");
+    
+    
+    
+    
+    /*
+    private void writeCsvHeader(String h1, String h2, String h3) throws IOException {
+		   String line = String.format("%s,%s,%s\n", h1,h2,h3);
+		   writer.write(line);
+	}
+	
+	private void writeCsvData(float d, float e, float f) throws IOException {  
+		  String line = String.format("%f,%f,%f\n", d, e, f);
+		  writer.write(line);
+	}  
+      
+    */
+    
+    
+    
+    //this thread is not used...was tring to look if video is in play/pause state
+    Thread timer = new Thread(){
+		public void run(){
+			try{
+				sleep(5000);
+			}catch(InterruptedException e){
+				e.printStackTrace();
+			}finally{
+				mediaPlayer.start();
+			}
+		}
+	};
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        
+    	
+    	
+    	super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_video_stream_media_player);
+        playerSurfaceView = (SurfaceView)findViewById(R.id.surfaceview);
+        surfaceHolder = playerSurfaceView.getHolder();
+        surfaceHolder.addCallback(this);
+        
+        }
+    @Override
+    public void surfaceChanged(SurfaceHolder arg0, int arg1, int arg2, int arg3) {
+        // TODO Auto-generated method stub
+    }
+    @Override
+    public void surfaceCreated(SurfaceHolder arg0) {
+    	//to remove surface ...put this entire try-cache into onCreate and comment all surfave related variables
+        //for(int j=0; j<2; j++){  
+    	////////////////////////////   
+    	try {
+            mediaPlayer = new MediaPlayer();
+            mediaPlayer.setDisplay(surfaceHolder);
+            //mediaPlayer.reset();
+            
+            mediaPlayer.setDataSource(VideoURL);
+            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+            mediaPlayer.prepare();
+            mediaPlayer.start();
+            vStartTime = System.currentTimeMillis();
+            mediaPlayer.setLooping(true);
+            //mediaPlayer.setOnPreparedListener(this);
+            Log.d("yo","Duration of video: "+mediaPlayer.getDuration()/1000.0);
+
+            mediaPlayer.setOnBufferingUpdateListener(new MediaPlayer.OnBufferingUpdateListener() {
+                @Override
+                public void onBufferingUpdate(MediaPlayer mp, int percent) {
+                    
+                	Log.d("yo","percent Start time "+ vStartTime);
+                	Log.d("yo","percent "+ String.valueOf(percent)+"  "+String.valueOf(System.currentTimeMillis()));
+                    
+                    percent_frag = percent - prev_percent;
+                    Buff_percent.add(percent_frag);
+                    prev_percent = percent;
+                    if(percent<100 && start==true){
+                        start=false;
+                        tStart = System.currentTimeMillis();
+                    }
+                    if(percent == 100 && end==true){
+                        end=false;
+                        tEnd = System.currentTimeMillis();
+                        tDelta = tEnd - tStart;
+                        elapsedSeconds = (tDelta / 1000);
+               
+                        
+                        Log.d("yo","Time taken: "+ String.valueOf(elapsedSeconds)+"  "+tEnd+" "+tStart);
+               Toast.makeText(getApplicationContext(),"Buffering time: "+ elapsedSeconds,Toast.LENGTH_LONG).show();
+                        if(print == true){
+                        	//CSV create if not created already
+                        try{
+                        	Log.d("yo","path "+  String.valueOf(root));
+                        	gpxfile.createNewFile();
+                			writer = new FileWriter(gpxfile,true); 
+                        }
+                        catch (IOException e) {
+                	            e.printStackTrace();
+                		}
+                        	Log.d("yo","No of times video paused" +"  "+ vPaused_duration.size());
+                        /*    for(int i=0;i<Buff_percent.size();i++){
+                            	Log.d("yo","Progressive Percent Buffer "+"  "+ Buff_percent.get(i)+ "  Size " + ((double)(Buff_percent.get(i))/100)*5);
+                            	
+                            } */
+                        	String lineneg = String.format("%s\n", "StartTime");
+                        	String line0 = String.format("%ld\n", vStartTime);
+                            String line1 = String.format("%s\t,%s\n", "TS", "Pause");
+                            try {
+                            	writer.write(lineneg);
+                            	writer.write(line0);
+								writer.write(line1);
+							} catch (IOException e1) {
+								// TODO Auto-generated catch block
+								e1.printStackTrace();
+							}
+							
+                            for(int i=0;i<vPaused_duration.size();i++){
+                                System.out.println(vPaused_duration.get(i));
+                                vPause_sum = vPause_sum + vPaused_duration.get(i);        
+                                //here, I will call CSV 
+                                Log.d("yo","Video Stopped at sec "+ ((vPaused_points.get(i)-vStartTime)/1000)+"  For period of "+ vPaused_duration.get(i)/1000.0 +" seconds");
+                                String line2 = String.format("%d,%f\n", (int)((vPaused_points.get(i)-vStartTime)/1000), (int)(vPaused_duration.get(i)/1000.0));
+                                try {
+									writer.write(line2);
+									if(i==(vPaused_duration.size()-1))
+									writer.write("\n");
+									writer.flush();							       
+								} catch (IOException e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
+								}
+                                //
+                                
+                        }
+                        	 try {
+								writer.close();
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+                        Log.d("yo","Total seconds video was paused"+"  "+ vPause_sum/1000);
+                        //CSV writing
+                        
+                        //
+                        print = false;
+                        mediaPlayer.stop();
+                        mediaPlayer.release();
+                        SystemClock.sleep(5000);
+                        onBackPressed();
+                        //mediaPlayer.release();
+                        //mediaPlayer.reset();
+                        }
+                    }
+                }
+            });
+            
+            mediaPlayer.setOnInfoListener(new MediaPlayer.OnInfoListener() {
+                @Override
+                public boolean onInfo(MediaPlayer mp, int what, int extra) {
+                    if (what==MediaPlayer.MEDIA_INFO_BUFFERING_START)
+                    {
+                    	Log.d("yo","buffering start, video paused" + "  " + System.currentTimeMillis());
+                    	vPause = System.currentTimeMillis();
+                    	
+                    }
+                    	if(what==MediaPlayer.MEDIA_INFO_BUFFERING_END)
+                    {
+                    	Log.d("yo","buffering end, video resumed"  + "  " + System.currentTimeMillis());
+                    	vResume = System.currentTimeMillis();                    	
+                    	vDelta = vResume - vPause;
+                    	vPaused_points.add((long)vPause);                                      	
+                    	vPaused_duration.add((long) vDelta);
+                    
+                    
+                    
+                    }
+                  	return false;
+                }
+            });
+        } catch (IllegalArgumentException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (SecurityException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (IllegalStateException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+      //}////////////////////////////for loop ends here
+
+    }
+    @Override
+    public void surfaceDestroyed(SurfaceHolder arg0) {
+        // TODO Auto-generated method stub
+    }
+    @Override
+    public void onPrepared(MediaPlayer mp) {
+    	//timer.start();
+        //mediaPlayer.start();
+        
+    }
+}

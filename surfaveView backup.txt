@@ -1,0 +1,170 @@
+package com.buffer;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.example.videostreaming.R;
+
+import android.app.Activity;
+import android.app.ProgressDialog;
+import android.content.Intent;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
+import android.media.MediaPlayer.OnPreparedListener;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
+import android.widget.ProgressBar;
+import android.widget.Toast;
+import android.widget.VideoView;
+//import com.example.chirag.videostreammediaplayer.R;
+public class VideoStreamMediaPlayer extends Activity implements SurfaceHolder.Callback, OnPreparedListener{
+
+    // Declare variables
+    ProgressDialog pDialog;
+    VideoView videoview;
+    MediaPlayer xyz = new MediaPlayer();
+    
+    //String VideoURL = "http://www.androidbegin.com/tutorial/AndroidCommercial.3gp";
+    //String VideoURL = "http://twii.edgeboss.net/download/twii/manutd/mufc_trickbox_240215.mp4";
+    //String VideoURL = "http://115.119.242.26:8095/ukd/DemoFiles/Beautiful.mp4";
+    String VideoURL = "http://h.saavncdn.com/540/SONY_886444676540_01_002.mp3";
+    
+    
+    SurfaceView playerSurfaceView;
+    int filesize;
+    SurfaceHolder surfaceHolder;
+    public ProgressBar mProgress;
+    MediaPlayer mediaPlayer;
+    static long tStart,tEnd,tDelta,vPause,vResume,vDelta;
+    List<Integer> vPaused_points = new ArrayList<Integer>();
+    List<Integer> Buff_percent = new ArrayList<Integer>();
+    static int CurrPercent=0,i;
+    double elapsedSeconds;
+    static boolean start=true,end=true, print = true;
+    int vPause_sum=0,percent_frag = 0, prev_percent = 0;
+   
+
+    Thread t = new Thread(new Runnable() {
+		
+		@Override
+		public void run() {
+			while(true){
+			if (mediaPlayer.isPlaying()==false){
+	        	Log.d("Paused"," "+String.valueOf(System.currentTimeMillis()));
+	        	break;
+				}
+			}
+			// TODO Auto-generated method stub
+		}
+	});
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_video_stream_media_player);
+        playerSurfaceView = (SurfaceView)findViewById(R.id.surfaceview);
+        surfaceHolder = playerSurfaceView.getHolder();
+        surfaceHolder.addCallback(this);
+    }
+    @Override
+    public void surfaceChanged(SurfaceHolder arg0, int arg1, int arg2, int arg3) {
+        // TODO Auto-generated method stub
+    }
+    @Override
+    public void surfaceCreated(SurfaceHolder arg0) {
+
+        try {
+            mediaPlayer = new MediaPlayer();
+            mediaPlayer.setDisplay(surfaceHolder);
+            mediaPlayer.setDataSource(VideoURL);
+            mediaPlayer.prepare();
+            mediaPlayer.setOnPreparedListener(this);
+            Log.d("yo","Duration of video: "+mediaPlayer.getDuration()/1000.0);  
+            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+            
+           
+            mediaPlayer.setOnBufferingUpdateListener(new MediaPlayer.OnBufferingUpdateListener() {
+                @Override
+                public void onBufferingUpdate(MediaPlayer mp, int percent) {
+                    Log.d("yo","percent "+ String.valueOf(percent)+"  "+String.valueOf(System.currentTimeMillis()));
+                    
+                    percent_frag = percent - prev_percent;
+                    Buff_percent.add(percent_frag);
+                    prev_percent = percent;
+                    if(percent<100 && start==true){
+                        start=false;
+                        tStart = System.currentTimeMillis();
+                    }
+                    if(percent == 100 && end==true){
+                        end=false;
+                        tEnd = System.currentTimeMillis();
+                        tDelta = tEnd - tStart;
+                        elapsedSeconds = (tDelta / 1000);
+                        Log.d("yo","Time taken: "+ String.valueOf(elapsedSeconds));
+                        Toast.makeText(getApplicationContext(),"Buffering time: "+ elapsedSeconds,Toast.LENGTH_LONG).show();
+                        if(print == true){
+                        	
+                        	Log.d("yo","No of times video paused" +"  "+ vPaused_points.size());
+                            for(int i=0;i<Buff_percent.size();i++){
+                            	Log.d("yo","Progressive Percent Buffer "+"  "+ Buff_percent.get(i)+ "  Size " + ((double)(Buff_percent.get(i))/100)*5);
+                            	
+                            }                        	                        
+                        	for(int i=0;i<vPaused_points.size();i++){
+                                System.out.println(vPaused_points.get(i));
+                                vPause_sum = vPause_sum + vPaused_points.get(i);                                                      
+                        }    
+                        Log.d("yo","Total seconds video was paused"+"  "+ vPause_sum/1000);
+                        
+                        print = false;
+            			finish();
+                        //Intent openstartingPoint = new Intent ("com.buffer.VideoStreamMediaPlayer");
+    					//startActivity(openstartingPoint);
+    		
+                        }
+                    }
+                }
+            });
+            
+            mediaPlayer.setOnInfoListener(new MediaPlayer.OnInfoListener() {
+                @Override
+                public boolean onInfo(MediaPlayer mp, int what, int extra) {
+                    if (what==MediaPlayer.MEDIA_INFO_BUFFERING_START)
+                    {
+                    	Log.d("yo","buffering start, video paused" + "  " + System.currentTimeMillis());
+                    	vPause = System.currentTimeMillis();
+                    }
+                    	if(what==MediaPlayer.MEDIA_INFO_BUFFERING_END)
+                    {
+                    	Log.d("yo","buffering end, video resumed"  + "  " + System.currentTimeMillis());
+                    	vResume = System.currentTimeMillis();                    	
+                    	vDelta = vResume - vPause;
+                    	vPaused_points.add((int) vDelta);
+                    }
+                  	return false;
+                }
+            });
+        } catch (IllegalArgumentException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (SecurityException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (IllegalStateException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+    @Override
+    public void surfaceDestroyed(SurfaceHolder arg0) {
+        // TODO Auto-generated method stub
+    }
+    @Override
+    public void onPrepared(MediaPlayer mp) {
+        mediaPlayer.start();
+        //t.start();
+    }
+}
